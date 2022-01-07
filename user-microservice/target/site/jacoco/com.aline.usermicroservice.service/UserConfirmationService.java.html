@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserConfirmationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">User Microservice</a> &gt; <a href="index.source.html" class="el_package">com.aline.usermicroservice.service</a> &gt; <span class="el_source">UserConfirmationService.java</span></div><h1>UserConfirmationService.java</h1><pre class="source lang-java linenums">package com.aline.usermicroservice.service;
+
+import com.aline.core.aws.email.EmailService;
+import com.aline.core.config.AppConfig;
+import com.aline.core.dto.response.ConfirmUserRegistrationResponse;
+import com.aline.core.exception.BadRequestException;
+import com.aline.core.exception.UnprocessableException;
+import com.aline.core.exception.gone.TokenExpiredException;
+import com.aline.core.exception.notfound.TokenNotFoundException;
+import com.aline.core.exception.notfound.UserNotFoundException;
+import com.aline.core.model.user.MemberUser;
+import com.aline.core.model.user.User;
+import com.aline.core.model.user.UserRegistrationToken;
+import com.aline.core.repository.UserRegistrationTokenRepository;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import javax.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+<span class="fc" id="L27">@RequiredArgsConstructor</span>
+<span class="fc" id="L28">@Slf4j(topic = &quot;User Confirmation Service&quot;)</span>
+public class UserConfirmationService {
+
+    private final AppConfig appConfig;
+    private final UserService userService;
+    private final EmailService emailService;
+    private final UserRegistrationTokenRepository repository;
+
+    /**
+     * Create a user registration token for a user.
+     * @param user The user to create a token for.
+     * @return The token created for the user.
+     */
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">    public UserRegistrationToken createRegistrationToken(@NonNull User user) {</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">        if (user.isEnabled())</span>
+<span class="nc" id="L43">            throw new UnprocessableException(&quot;Cannot create a registration confirmation token for a user that is already enabled.&quot;);</span>
+<span class="fc" id="L44">        UserRegistrationToken token = new UserRegistrationToken();</span>
+<span class="fc" id="L45">        token.setUser(user);</span>
+<span class="fc" id="L46">        return repository.save(token);</span>
+    }
+
+    /**
+     * Confirm registration and delete the token.
+     * @param token The token to access the user.
+     */
+    @Transactional(rollbackOn = {
+            UserNotFoundException.class,
+            UnprocessableException.class
+    })
+<span class="nc bnc" id="L57" title="All 2 branches missed.">    public ConfirmUserRegistrationResponse confirmRegistration(@NonNull UserRegistrationToken token) {</span>
+<span class="nc" id="L58">        log.info(&quot;Confirming registration token: {}&quot;, token);</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (token.isExpired()) {</span>
+<span class="nc" id="L60">            repository.delete(token);</span>
+<span class="nc" id="L61">            throw new TokenExpiredException();</span>
+        }
+<span class="nc" id="L63">        User user = userService.getUserByToken(token);</span>
+<span class="nc" id="L64">        userService.enableUser(user.getId());</span>
+<span class="nc" id="L65">        repository.delete(token);</span>
+
+<span class="nc" id="L67">        return ConfirmUserRegistrationResponse.builder()</span>
+<span class="nc" id="L68">                .username(user.getUsername())</span>
+<span class="nc" id="L69">                .confirmedAt(LocalDateTime.now())</span>
+<span class="nc" id="L70">                .enabled(user.isEnabled())</span>
+<span class="nc" id="L71">                .build();</span>
+    }
+
+    /**
+     * Get token by ID
+     * @param id The string id that will be converted into a UUID.
+     * @return The token that is found with that ID.
+     * @throws TokenNotFoundException If the token does not exist.
+     */
+    public UserRegistrationToken getTokenById(String id) {
+        try  {
+<span class="nc" id="L82">            UUID uuid = UUID.fromString(id);</span>
+<span class="nc" id="L83">            return repository.findById(uuid).orElseThrow(TokenNotFoundException::new);</span>
+<span class="nc" id="L84">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L85">            throw new BadRequestException(&quot;Token format is invalid.&quot;);</span>
+        }
+    }
+
+    /**
+     * Get token by user
+     * @param user The user the token is being queried for
+     * @return The token that is found linked to the user.
+     * @throws TokenNotFoundException If the token does not exist.
+     */
+<span class="nc bnc" id="L95" title="All 2 branches missed.">    public UserRegistrationToken getTokenByUser(@NonNull User user) {</span>
+<span class="nc" id="L96">        return repository.findByUserId(user.getId()).orElseThrow(TokenNotFoundException::new);</span>
+    }
+
+    /**
+     * Send the specified user a confirmation email.
+     * @param user The user to create and send a confirmation email to.
+     */
+    public void sendMemberUserConfirmationEmail(MemberUser user) {
+
+<span class="fc" id="L105">        final String username = user.getUsername();</span>
+<span class="fc" id="L106">        final String subject = String.format(&quot;We Need Your Confirmation, %s&quot;, username);</span>
+<span class="fc" id="L107">        final String template = &quot;user/confirm-registration&quot;;</span>
+<span class="fc" id="L108">        final String email = user.getMember().getApplicant().getEmail();</span>
+<span class="fc" id="L109">        final String memberDashboardUrl = appConfig.getMemberDashboard();</span>
+<span class="fc" id="L110">        final String landingPortalUrl = appConfig.getLandingPortal();</span>
+<span class="fc" id="L111">        final String token = createRegistrationToken(user).getToken().toString();</span>
+<span class="fc" id="L112">        final String confirmationLink = String.format(&quot;%s/confirmation?token=%s&quot;, memberDashboardUrl, token);</span>
+
+<span class="fc" id="L114">        final Map&lt;String, String&gt; variables = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L115">        variables.put(&quot;landingPortalUrl&quot;, landingPortalUrl);</span>
+<span class="fc" id="L116">        variables.put(&quot;confirmationLink&quot;, confirmationLink);</span>
+
+<span class="fc" id="L118">        emailService.sendHtmlEmail(subject, template, email, variables);</span>
+<span class="fc" id="L119">    }</span>
+
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

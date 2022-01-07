@@ -1,0 +1,17 @@
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\UserConfirmationService.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\config\BeanConfig.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\UserMicroserviceApplication.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\authorization\UserAuthorization.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\MemberService.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\function\UserRegistrationConsumer.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\controller\UserController.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\ResetPasswordService.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\ApplicantService.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\UserService.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\registration\AdminUserRegistrationHandler.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\registration\MemberUserRegistrationHandler.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\controller\RootController.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\config\WebSecurityConfig.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\AvatarService.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\function\HandleOtpBeforeHash.java
+D:\aline\user-microservice\user-microservice\src\main\java\com\aline\usermicroservice\service\registration\UserRegistrationHandler.java

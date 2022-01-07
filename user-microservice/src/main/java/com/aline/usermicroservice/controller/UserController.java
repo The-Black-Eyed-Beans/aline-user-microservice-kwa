@@ -118,9 +118,9 @@ public class UserController {
     public ResponseEntity<UserResponse> registerUser(@Valid @RequestBody UserRegistration registration) {
         // Create a registration token for a member user when registration is successful.
         UserResponse response = userService.registerUser(registration, user -> {
-            if (UserRole.valueOf(user.getRole().toUpperCase()) == UserRole.MEMBER) {
-                confirmationService.sendMemberUserConfirmationEmail((MemberUser) user);
-            }
+            //if (UserRole.valueOf(user.getRole().toUpperCase()) == UserRole.MEMBER) {
+            //    confirmationService.sendMemberUserConfirmationEmail((MemberUser) user);
+            //}
         });
         URI location = ServletUriComponentsBuilder
                 .fromCurrentContextPath()

@@ -1,0 +1,11 @@
+com\aline\usermicroservice\UserIntegrationTest$UserRegistrationTest$RegistrationIsInvalid.class
+com\aline\usermicroservice\UserIntegrationTest.class
+com\aline\usermicroservice\LoginIntegrationTest.class
+com\aline\usermicroservice\EmailServiceTest.class
+com\aline\usermicroservice\SmokeTest.class
+com\aline\usermicroservice\UserIntegrationTest$UserRegistrationConfirmation.class
+com\aline\usermicroservice\UserIntegrationTest$UserProfileTests$UpdateUserProfileTests.class
+com\aline\usermicroservice\UserIntegrationTest$PasswordResetTest.class
+com\aline\usermicroservice\UserIntegrationTest$UserRegistrationTest.class
+com\aline\usermicroservice\UserRegistrationConfirmationTest.class
+com\aline\usermicroservice\UserIntegrationTest$UserProfileTests.class

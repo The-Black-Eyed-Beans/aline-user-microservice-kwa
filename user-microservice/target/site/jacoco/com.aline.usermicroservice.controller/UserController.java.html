@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">User Microservice</a> &gt; <a href="index.source.html" class="el_package">com.aline.usermicroservice.controller</a> &gt; <span class="el_source">UserController.java</span></div><h1>UserController.java</h1><pre class="source lang-java linenums">package com.aline.usermicroservice.controller;
+
+import com.aline.core.dto.request.ConfirmUserRegistration;
+import com.aline.core.dto.request.OtpAuthentication;
+import com.aline.core.dto.request.ResetPasswordAuthentication;
+import com.aline.core.dto.request.ResetPasswordRequest;
+import com.aline.core.dto.request.UserAvatarRequest;
+import com.aline.core.dto.request.UserProfileUpdate;
+import com.aline.core.dto.request.UserRegistration;
+import com.aline.core.dto.response.ConfirmUserRegistrationResponse;
+import com.aline.core.dto.response.PaginatedResponse;
+import com.aline.core.dto.response.UserProfile;
+import com.aline.core.dto.response.UserResponse;
+import com.aline.core.model.user.MemberUser;
+import com.aline.core.model.user.UserRegistrationToken;
+import com.aline.core.model.user.UserRole;
+import com.aline.usermicroservice.service.AvatarService;
+import com.aline.usermicroservice.service.ResetPasswordService;
+import com.aline.usermicroservice.service.UserConfirmationService;
+import com.aline.usermicroservice.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.CurrentSecurityContext;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import javax.validation.Valid;
+import java.net.URI;
+
+@Tag(name = &quot;Users&quot;)
+@RestController
+@RequestMapping(&quot;/users&quot;)
+<span class="fc" id="L52">@RequiredArgsConstructor</span>
+<span class="fc" id="L53">@Slf4j(topic = &quot;User Controller&quot;)</span>
+public class UserController {
+
+    @Value(&quot;${server.port}&quot;)
+    private int port;
+
+    private final UserService userService;
+    private final UserConfirmationService confirmationService;
+    private final ResetPasswordService passwordService;
+	private final AvatarService avatarService;
+    @Operation(description = &quot;Get a user by ID&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;User with specified ID found.&quot;),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;User does not exist.&quot;)
+    })
+    @GetMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;UserResponse&gt; getUserById(@PathVariable long id) {
+<span class="fc" id="L70">        UserResponse userResponse = userService.getUserById(id);</span>
+<span class="fc" id="L71">        return ResponseEntity</span>
+<span class="fc" id="L72">                .ok()</span>
+<span class="fc" id="L73">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L74">                .body(userResponse);</span>
+    }
+
+	@Operation(description = &quot;Update avatar image for a user&quot;)
+	@PutMapping(&quot;/current/avatar&quot;)
+	public ResponseEntity&lt;Void&gt; putAvatar(
+			@CurrentSecurityContext(expression = &quot;authentication&quot;) Authentication authentication,
+			@RequestBody UserAvatarRequest image) {
+<span class="nc" id="L82">		UserResponse currentUser = userService.getCurrentUser(authentication);</span>
+<span class="nc" id="L83">		avatarService.putAvatar(currentUser.getId(), image);</span>
+<span class="nc" id="L84">		return ResponseEntity.ok().build();</span>
+	}
+
+	@Operation(description = &quot;Get avatar image for a user&quot;)
+	@GetMapping(&quot;/current/avatar&quot;)
+	public ResponseEntity&lt;UserAvatarRequest&gt; getAvatar(
+			@CurrentSecurityContext(expression = &quot;authentication&quot;) Authentication authentication) {
+<span class="nc" id="L91">		UserResponse currentUser = userService.getCurrentUser(authentication);</span>
+<span class="nc" id="L92">		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)</span>
+<span class="nc" id="L93">				.body(avatarService.getAvatar(currentUser.getId()));</span>
+	}
+    @Operation(description = &quot;Get a paginated response of users&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Paginated response was sent. It may have an empty content array which means there are no users.&quot;)
+    })
+    @GetMapping
+    public ResponseEntity&lt;Page&lt;UserResponse&gt;&gt; getAllUsers(Pageable pageable,
+                                                          @RequestParam(defaultValue = &quot;&quot;) String search,
+                                                          @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+<span class="nc" id="L103">        PaginatedResponse&lt;UserResponse&gt; userResponsePage = userService.getAllUsers(pageable, search);</span>
+<span class="nc" id="L104">        return ResponseEntity</span>
+<span class="nc" id="L105">                .ok()</span>
+<span class="nc" id="L106">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="nc" id="L107">                .body(userResponsePage);</span>
+    }
+
+    @Operation(description = &quot;Create a new user registration&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;201&quot;, description = &quot;User has been successfully registered.&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;The user registration DTO contained bad data.&quot;),
+            @ApiResponse(responseCode = &quot;409&quot;, description = &quot;There was a data conflict when creating the user.&quot;),
+            @ApiResponse(responseCode = &quot;502&quot;, description = &quot;The user registration confirmation email was not sent.&quot;)
+    })
+    @PostMapping(&quot;/registration&quot;)
+    public ResponseEntity&lt;UserResponse&gt; registerUser(@Valid @RequestBody UserRegistration registration) {
+        // Create a registration token for a member user when registration is successful.
+<span class="fc" id="L120">        UserResponse response = userService.registerUser(registration, user -&gt; {</span>
+            //if (UserRole.valueOf(user.getRole().toUpperCase()) == UserRole.MEMBER) {
+            //    confirmationService.sendMemberUserConfirmationEmail((MemberUser) user);
+            //}
+<span class="fc" id="L124">        });</span>
+        URI location = ServletUriComponentsBuilder
+<span class="fc" id="L126">                .fromCurrentContextPath()</span>
+<span class="fc" id="L127">                .path(&quot;/users/{id}&quot;)</span>
+<span class="fc" id="L128">                .port(port)</span>
+<span class="fc" id="L129">                .buildAndExpand(response.getId())</span>
+<span class="fc" id="L130">                .toUri();</span>
+<span class="fc" id="L131">        return ResponseEntity</span>
+<span class="fc" id="L132">                .created(location)</span>
+<span class="fc" id="L133">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L134">                .body(response);</span>
+    }
+
+    /**
+     * Confirms the registration of a user and enables their account.
+     * @param confirmUserRegistration The confirm registration dto sent from the front-end
+     * @return ConfirmUserRegistrationResponse ResponseEntity
+     */
+    @Operation(description = &quot;Confirm user registration&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;User registration was successfully confirmed.&quot;),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;User or registration was not found.&quot;),
+            @ApiResponse(responseCode = &quot;410&quot;, description = &quot;Token does not exist or is expired.&quot;)
+    })
+    @PostMapping(&quot;/confirmation&quot;)
+    public ResponseEntity&lt;ConfirmUserRegistrationResponse&gt; confirmUserRegistration(@Valid @RequestBody ConfirmUserRegistration confirmUserRegistration) {
+
+<span class="nc" id="L151">        UserRegistrationToken token = confirmationService.getTokenById(confirmUserRegistration.getToken());</span>
+<span class="nc" id="L152">        ConfirmUserRegistrationResponse response = confirmationService.confirmRegistration(token);</span>
+
+<span class="nc" id="L154">        return ResponseEntity</span>
+<span class="nc" id="L155">                .ok()</span>
+<span class="nc" id="L156">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="nc" id="L157">                .body(response);</span>
+    }
+
+    /**
+     * Sends a reset OTP to the requesting user
+     * specified in the DTO.
+     * @param resetPasswordAuthentication the DTO that contains the user information
+     * @return Response Entity of Void
+     */
+    @Operation(description = &quot;Create a one-time passcode to reset a user's password&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Password OTP is created.&quot;),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;User to create the OTP for was not found.&quot;),
+            @ApiResponse(responseCode = &quot;422&quot;, description = &quot;One-time passcode was not sent through either SMS or Email.&quot;)
+    })
+    @PostMapping(&quot;/password-reset-otp&quot;)
+    public ResponseEntity&lt;Void&gt; createPasswordResetOtp(@Valid @RequestBody ResetPasswordAuthentication resetPasswordAuthentication) {
+<span class="fc" id="L174">        passwordService.createResetPasswordRequest(resetPasswordAuthentication,</span>
+                (otp, user) -&gt; {
+<span class="fc" id="L176">                    log.info(&quot;Contact Method: {}&quot;, resetPasswordAuthentication.getContactMethod());</span>
+<span class="pc bpc" id="L177" title="2 of 3 branches missed.">                    switch (resetPasswordAuthentication.getContactMethod()) {</span>
+                        case PHONE:
+<span class="fc" id="L179">                            log.info(&quot;Send password reset message to {}. OTP is {}&quot;, user.getUsername(), otp);</span>
+<span class="fc" id="L180">                            passwordService.sendOTPMessage(otp, user);</span>
+<span class="fc" id="L181">                            break;</span>
+                        case EMAIL:
+<span class="nc" id="L183">                            log.info(&quot;Send password reset email to {}. OTP is {}&quot;, user.getUsername(), otp);</span>
+<span class="nc" id="L184">                            passwordService.sendOTPEmail(otp, user);</span>
+                            break;
+                    }
+<span class="fc" id="L187">                });</span>
+<span class="fc" id="L188">        return ResponseEntity.ok().build();</span>
+    }
+
+    /**
+     * Reset password based on information
+     * passed in through the request.
+     * @param request The request DTO that contains the new password and OTP
+     * @return Response Entity of Void
+     */
+    @Operation(description = &quot;Reset user password&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Password successfully reset.&quot;),
+            @ApiResponse(responseCode = &quot;&quot;)
+    })
+    @PutMapping(&quot;/password-reset&quot;)
+    public ResponseEntity&lt;Void&gt; resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+<span class="fc" id="L204">        passwordService.resetPassword(request);</span>
+<span class="fc" id="L205">        return ResponseEntity.ok().build();</span>
+    }
+
+    /**
+     * Authenticates the OTP and checks to make sure
+     * it exists with the correct username.
+     * @param authentication The DTO that contains the username and the OTP.
+     * @return Ok response entity.
+     */
+    @Operation(description = &quot;Verify the OTP and allow it to be used.&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;One-time passcode was successfully verified.&quot;),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;One-time passcode was not correct and was not verified.&quot;)
+    })
+    @PostMapping(&quot;/otp-authentication&quot;)
+    public ResponseEntity&lt;Void&gt; authenticateOtp(@Valid @RequestBody OtpAuthentication authentication) {
+<span class="fc" id="L221">        passwordService.verifyOtp(authentication.getOtp(), authentication.getUsername());</span>
+<span class="fc" id="L222">        return ResponseEntity.ok().build();</span>
+    }
+
+    /**
+     * Get the current authenticated user
+     * @param authentication The security context authentication object
+     * @return A user response of the current authenticated user
+     */
+    @Operation(description = &quot;Get the current authenticated user.&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Retrieved current authenticated user.&quot;),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Not authorized to access the user.&quot;)
+    })
+    @GetMapping(&quot;/current&quot;)
+    public ResponseEntity&lt;UserResponse&gt; getCurrentUser(@CurrentSecurityContext(expression = &quot;authentication&quot;)
+                                                       Authentication authentication) {
+<span class="fc" id="L238">        UserResponse currentUser = userService.getCurrentUser(authentication);</span>
+<span class="fc" id="L239">        return ResponseEntity</span>
+<span class="fc" id="L240">                .ok()</span>
+<span class="fc" id="L241">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L242">                .body(currentUser);</span>
+    }
+
+    @Operation(description = &quot;Get a user profile by ID&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Successful retrieval of user profile&quot;),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;User profile does not exist. (May not be a member)&quot;),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Not authorized to access the user profile&quot;)
+    })
+    @GetMapping(&quot;/{id}/profile&quot;)
+    public ResponseEntity&lt;UserProfile&gt; getUserProfile(@PathVariable long id) {
+<span class="fc" id="L253">        UserProfile profile = userService.getUserProfileById(id);</span>
+<span class="fc" id="L254">        return ResponseEntity</span>
+<span class="fc" id="L255">                .ok()</span>
+<span class="fc" id="L256">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L257">                .body(profile);</span>
+    }
+
+    @Operation(description = &quot;Get a user profile of current logged-in user&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Successful retrieval of user profile&quot;),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;User profile does not exist. (May not be a member)&quot;),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Not authorized to access the user profile&quot;)
+    })
+    @GetMapping(&quot;/current/profile&quot;)
+    public ResponseEntity&lt;UserProfile&gt; getCurrentUserProfile(@CurrentSecurityContext(expression = &quot;authentication&quot;)
+                                                             Authentication authentication) {
+<span class="nc" id="L269">        UserProfile currentProfile = userService.getCurrentUserProfile(authentication);</span>
+<span class="nc" id="L270">        return ResponseEntity</span>
+<span class="nc" id="L271">                .ok()</span>
+<span class="nc" id="L272">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="nc" id="L273">                .body(currentProfile);</span>
+    }
+
+    @Operation(description = &quot;Update user profile by user ID&quot;)
+    @PutMapping(&quot;/{id}/profile&quot;)
+    public ResponseEntity&lt;Void&gt; updateUserProfileById(@PathVariable long id, @RequestBody UserProfileUpdate update) {
+<span class="fc" id="L279">        userService.updateUserProfile(id, update);</span>
+<span class="fc" id="L280">        return ResponseEntity</span>
+<span class="fc" id="L281">                .noContent()</span>
+<span class="fc" id="L282">                .build();</span>
+    }
+
+    @Operation(description = &quot;Update current logged-in user profile&quot;)
+    @PutMapping(&quot;/current/profile&quot;)
+    public ResponseEntity&lt;Void&gt; updateUserProfileById(@CurrentSecurityContext(expression = &quot;authentication&quot;)
+                                                      Authentication authentication, @RequestBody UserProfileUpdate update) {
+<span class="nc" id="L289">        userService.updateCurrentUserProfile(authentication, update);</span>
+<span class="nc" id="L290">        return ResponseEntity</span>
+<span class="nc" id="L291">                .noContent()</span>
+<span class="nc" id="L292">                .build();</span>
+    }
+
+	@Operation(description = &quot;Disable/Enabled current logged-in user profile&quot;)
+	@PutMapping(&quot;/current/profile/status&quot;)
+	public ResponseEntity&lt;Void&gt; disableUserProfileById(
+			@CurrentSecurityContext(expression = &quot;authentication&quot;) Authentication authentication,
+			@RequestBody Boolean status) {
+<span class="nc" id="L300">		userService.disableCurrentUserProfile(authentication, status);</span>
+<span class="nc" id="L301">		return ResponseEntity.noContent().build();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

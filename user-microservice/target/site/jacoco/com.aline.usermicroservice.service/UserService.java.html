@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">User Microservice</a> &gt; <a href="index.source.html" class="el_package">com.aline.usermicroservice.service</a> &gt; <span class="el_source">UserService.java</span></div><h1>UserService.java</h1><pre class="source lang-java linenums">package com.aline.usermicroservice.service;
+
+import com.aline.core.dto.request.AddressChangeRequest;
+import com.aline.core.dto.request.UserProfileUpdate;
+import com.aline.core.dto.request.UserRegistration;
+import com.aline.core.dto.response.AddressResponse;
+import com.aline.core.dto.response.ContactInfo;
+import com.aline.core.dto.response.PaginatedResponse;
+import com.aline.core.dto.response.UserProfile;
+import com.aline.core.dto.response.UserResponse;
+import com.aline.core.exception.NotFoundException;
+import com.aline.core.exception.UnauthorizedException;
+import com.aline.core.exception.UnprocessableException;
+import com.aline.core.exception.notfound.UserNotFoundException;
+import com.aline.core.model.Applicant;
+import com.aline.core.model.Member;
+import com.aline.core.model.user.MemberUser;
+import com.aline.core.model.user.User;
+import com.aline.core.model.user.UserRegistrationToken;
+import com.aline.core.model.user.UserRole;
+import com.aline.core.repository.ApplicantRepository;
+import com.aline.core.repository.MemberRepository;
+import com.aline.core.repository.UserRepository;
+import com.aline.core.util.SimpleSearchSpecification;
+import com.aline.usermicroservice.service.function.UserRegistrationConsumer;
+import com.aline.usermicroservice.service.registration.UserRegistrationHandler;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeMap;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.lang.Nullable;
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.security.PermitAll;
+import javax.transaction.Transactional;
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * UserServiceImpl is an implementation of the UserService
+ * interface. This class contains logic to help differentiate
+ * the different implementations of the UserRegistration abstract class
+ * and map them to their correct UserRegistrationHandler. It also
+ * contains basic CRUD methods for use in the controller.
+ * &lt;br/&gt; &lt;br/&gt;
+ * This class also suppresses &quot;unchecked&quot; and &quot;rawtypes&quot; warnings.
+ */
+@Service
+<span class="fc" id="L59">@RequiredArgsConstructor</span>
+<span class="fc" id="L60">@Slf4j</span>
+@SuppressWarnings({&quot;rawtypes&quot;, &quot;unchecked&quot;})
+public class UserService {
+
+    private final UserRepository repository;
+    private final MemberService memberService;
+    private final ApplicantService applicantService;
+    private final ModelMapper modelMapper;
+
+    // Retrieve a list of UserRegistrationHandler implementations
+    private final List&lt;UserRegistrationHandler&gt; handlers;
+    private Map&lt;Class&lt;? extends UserRegistration&gt;, UserRegistrationHandler&gt; handlerMap;
+
+    /**
+     * Initialize the class after injection.
+     * This method converts the list of UserRegistrationHandler implementations
+     * into a map with the UserRegistration implementation as the key.
+     *
+     * This will be used when registering the user.
+     */
+    @PostConstruct
+    public void init() {
+<span class="fc" id="L82">        handlerMap = handlers.stream()</span>
+<span class="fc" id="L83">                .collect(Collectors.toMap(UserRegistrationHandler::registersAs, Function.identity()));</span>
+<span class="fc" id="L84">    }</span>
+
+    /**
+     * Get a user by ID.
+     * @param id The ID to query.
+     * @return A UserResponse of the queried user.
+     */
+	@PreAuthorize(&quot;permitAll()&quot;)
+	@PostAuthorize(&quot;@authService.canAccess(returnObject)&quot;)
+    public UserResponse getUserById(Long id) {
+<span class="fc" id="L94">        return mapToDto(repository.findById(id).orElseThrow(UserNotFoundException::new));</span>
+    }
+
+    /**
+     * Returns a paginated response of all users.
+     * @param pageable Pageable passed in from controller.
+     * @param search The search term.
+     * @return A paginated response of UserResponse DTOs.
+     */
+    @PreAuthorize(&quot;hasAnyAuthority(@roles.admin, @roles.employee)&quot;)
+    public PaginatedResponse&lt;UserResponse&gt; getAllUsers(Pageable pageable, String search) {
+<span class="nc" id="L105">        SimpleSearchSpecification&lt;User&gt; spec = new SimpleSearchSpecification&lt;&gt;(search);</span>
+<span class="nc" id="L106">        Page&lt;User&gt; usersPage = repository.findAll(spec, pageable);</span>
+<span class="nc" id="L107">        Page&lt;UserResponse&gt; userResponsePage = usersPage.map(this::mapToDto);</span>
+<span class="nc" id="L108">        return new PaginatedResponse&lt;&gt;(userResponsePage.getContent(), pageable, userResponsePage.getTotalElements());</span>
+    }
+
+    /**
+     * Helper method to map a user to a user response.
+     * &lt;br/&gt;
+     * If the user has a role of MEMBER then it will
+     * reach into the MemberUser's linked applicant
+     * to retrieve the properties &lt;code&gt;firstName&lt;/code&gt;,
+     * &lt;code&gt;lastName&lt;/code&gt;, and &lt;code&gt;email&lt;/code&gt;.
+     * @param user User to map.
+     * @return A UserResponse mapped from a User entity.
+     */
+    public UserResponse mapToDto(User user) {
+<span class="fc" id="L122">        UserResponse userResponse = modelMapper.map(user, UserResponse.class);</span>
+<span class="fc" id="L123">        userResponse.setRole(user.getUserRole());</span>
+
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">        if (user.getUserRole() == UserRole.MEMBER) {</span>
+<span class="fc" id="L126">            MemberUser memberUser = (MemberUser) user;</span>
+
+<span class="fc" id="L128">            Member member = memberUser.getMember();</span>
+<span class="fc" id="L129">            Applicant applicant = member.getApplicant();</span>
+
+<span class="fc" id="L131">            String firstName = applicant.getFirstName();</span>
+<span class="fc" id="L132">            String lastName = applicant.getLastName();</span>
+<span class="fc" id="L133">            String email = applicant.getEmail();</span>
+
+<span class="fc" id="L135">            long memberId = member.getId();</span>
+<span class="fc" id="L136">            String membershipId = member.getMembershipId();</span>
+
+<span class="fc" id="L138">            userResponse.setFirstName(firstName);</span>
+<span class="fc" id="L139">            userResponse.setLastName(lastName);</span>
+<span class="fc" id="L140">            userResponse.setEmail(email);</span>
+<span class="fc" id="L141">            userResponse.setMemberId(memberId);</span>
+<span class="fc" id="L142">            userResponse.setMembershipId(membershipId);</span>
+        }
+
+<span class="fc" id="L145">        return userResponse;</span>
+    }
+
+    /**
+     * Handles the registration of user. This class
+     * utilizes generic type list injection that is available
+     * in Spring to have a collection of UserRegistrationHandlers
+     * on hand. That collection is then converted in a map that
+     * allows access to a single UserRegistrationHandler by the
+     * {@link UserRegistrationHandler#registersAs()} method.
+     *
+     * &lt;br/&gt;
+     *
+     * &lt;p&gt;
+     *     For example: &lt;br/&gt;
+     *     &lt;code&gt;
+     *         handlerMap = new HashMap&lt;&gt;(); &lt;br/&gt;
+     *         handlerMap.put(handler.registersAs(), handler);
+     *          &lt;br/&gt; &lt;br/&gt;
+     *         // We can now access a handler by calling the map method below: &lt;br/&gt;
+     *         handlerMap.get(MemberUser.class); // Returns a MemberUserRegistrationHandler
+     *     &lt;/code&gt;
+     * &lt;/p&gt;
+     * @param registration The UserRegistration DTO passed from the controller.
+     * @return A UserResponse returned from the handler.
+     */
+    public UserResponse registerUser(@Valid UserRegistration registration, @Nullable UserRegistrationConsumer consumer) {
+<span class="fc" id="L172">        val handler = handlerMap.get(registration.getClass());</span>
+<span class="fc" id="L173">        User registered = handler.register(registration);</span>
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">        if (consumer != null)</span>
+<span class="fc" id="L175">            consumer.onRegistrationComplete(registered);</span>
+<span class="fc" id="L176">        return handler.mapToResponse(registered);</span>
+    }
+
+    public void enableUser(Long id) {
+<span class="nc" id="L180">        User user = repository.findById(id).orElseThrow(UserNotFoundException::new);</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">        if (user.isEnabled())</span>
+<span class="nc" id="L182">            throw new UnprocessableException(&quot;Cannot enable a user that is already enabled.&quot;);</span>
+<span class="nc" id="L183">        user.setEnabled(true);</span>
+<span class="nc" id="L184">        repository.save(user);</span>
+<span class="nc" id="L185">    }</span>
+
+    /**
+     * Find a user by a registration token.
+     * @param token The token associated with the user.
+     * @return The user that was associated with the passed token.
+     */
+    public User getUserByToken(UserRegistrationToken token) {
+<span class="nc" id="L193">        return repository.findByToken(token).orElseThrow(UserNotFoundException::new);</span>
+    }
+
+    /**
+     * Get current user information.
+     * @return The current authenticated user.
+     */
+    public UserResponse getCurrentUser(Authentication authentication) {
+<span class="fc" id="L201">        String username = authentication.getName();</span>
+<span class="fc" id="L202">        User user = repository.findByUsername(username)</span>
+<span class="fc" id="L203">                .orElseThrow(() -&gt; new UnauthorizedException(&quot;Not authorized to access this user.&quot;));</span>
+<span class="fc" id="L204">        return mapToDto(user);</span>
+    }
+
+    /**
+     * Get user profile by id
+     * @param id The id of the user
+     * @return A UserProfile DTO of the requested user ID
+     */
+    @PermitAll
+    @PostAuthorize(&quot;@authService.canAccess(returnObject)&quot;)
+    public UserProfile getUserProfileById(long id) {
+<span class="fc" id="L215">        User user = repository.findById(id).orElseThrow(UserNotFoundException::new);</span>
+
+<span class="pc bpc" id="L217" title="1 of 2 branches missed.">        if (user.getUserRole() != UserRole.MEMBER)</span>
+<span class="nc" id="L218">            throw new NotFoundException(&quot;User does not have a profile.&quot;);</span>
+
+<span class="fc" id="L220">        MemberUser memberUser = (MemberUser) user;</span>
+<span class="fc" id="L221">        return mapUserToProfile(memberUser);</span>
+    }
+
+    /**
+     * Get current logged-in user profile
+     * @param authentication The authentication object of the logged-in user
+     * @return UserProfile DTO of the currently logged-in user
+     */
+    public UserProfile getCurrentUserProfile(Authentication authentication) {
+<span class="nc" id="L230">        String username = authentication.getName();</span>
+<span class="nc" id="L231">        User user = repository.findByUsername(username)</span>
+<span class="nc" id="L232">                .orElseThrow(() -&gt; new UnauthorizedException(&quot;Not authorized to access this user.&quot;));</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        if (user.getUserRole() != UserRole.MEMBER)</span>
+<span class="nc" id="L234">            throw new NotFoundException(&quot;User does not have a profile.&quot;);</span>
+
+<span class="nc" id="L236">        MemberUser memberUser = (MemberUser) user;</span>
+<span class="nc" id="L237">        return mapUserToProfile(memberUser);</span>
+    }
+
+    /**
+     * Map MemberUser object to a UserProfile
+     * @param memberUser The user to map to a profile
+     * @return A profile of the passed user
+     */
+    public UserProfile mapUserToProfile(MemberUser memberUser) {
+<span class="fc" id="L246">        Member member = memberUser.getMember();</span>
+<span class="fc" id="L247">        Applicant applicant = member.getApplicant();</span>
+
+<span class="fc" id="L249">        return UserProfile.builder()</span>
+<span class="fc" id="L250">                .username(memberUser.getUsername())</span>
+<span class="fc" id="L251">                .firstName(applicant.getFirstName())</span>
+<span class="fc" id="L252">                .middleName(applicant.getMiddleName())</span>
+<span class="fc" id="L253">                .lastName(applicant.getLastName())</span>
+<span class="fc" id="L254">                .income(applicant.getIncome())</span>
+<span class="fc" id="L255">                .membershipId(member.getMembershipId())</span>
+<span class="fc" id="L256">                .billingAddress(AddressResponse.builder()</span>
+<span class="fc" id="L257">                        .address(applicant.getAddress())</span>
+<span class="fc" id="L258">                        .city(applicant.getCity())</span>
+<span class="fc" id="L259">                        .state(applicant.getState())</span>
+<span class="fc" id="L260">                        .zipcode(applicant.getZipcode())</span>
+<span class="fc" id="L261">                        .build())</span>
+<span class="fc" id="L262">                .mailingAddress(AddressResponse.builder()</span>
+<span class="fc" id="L263">                        .address(applicant.getMailingAddress())</span>
+<span class="fc" id="L264">                        .city(applicant.getMailingCity())</span>
+<span class="fc" id="L265">                        .state(applicant.getMailingState())</span>
+<span class="fc" id="L266">                        .zipcode(applicant.getMailingZipcode())</span>
+<span class="fc" id="L267">                        .build())</span>
+<span class="fc" id="L268">                .contactInfo(ContactInfo.builder()</span>
+<span class="fc" id="L269">                        .email(applicant.getEmail())</span>
+<span class="fc" id="L270">                        .phone(applicant.getPhone())</span>
+<span class="fc" id="L271">                        .build())</span>
+<span class="fc" id="L272">                .build();</span>
+    }
+
+    @Transactional(rollbackOn = {NotFoundException.class, UserNotFoundException.class})
+    @PreAuthorize(&quot;@authService.canAccess(#userId)&quot;)
+    public void updateUserProfile(long userId, UserProfileUpdate update) {
+<span class="fc" id="L278">        User user = repository.findById(userId).orElseThrow(UserNotFoundException::new);</span>
+<span class="pc bpc" id="L279" title="1 of 2 branches missed.">        if (user.getUserRole() != UserRole.MEMBER)</span>
+<span class="nc" id="L280">            throw new NotFoundException(&quot;User does not have a profile.&quot;);</span>
+
+<span class="fc" id="L282">        MemberUser memberUser = (MemberUser) user;</span>
+<span class="fc" id="L283">        Member member = memberUser.getMember();</span>
+<span class="fc" id="L284">        Applicant applicant = member.getApplicant();</span>
+
+<span class="fc" id="L286">        ModelMapper modelMapper = new ModelMapper();</span>
+<span class="fc" id="L287">        modelMapper.getConfiguration()</span>
+<span class="fc" id="L288">                .setSkipNullEnabled(true);</span>
+<span class="fc" id="L289">        modelMapper.map(update, applicant);</span>
+
+<span class="fc bfc" id="L291" title="All 2 branches covered.">        if (update.getUsername() != null) {</span>
+<span class="fc" id="L292">            memberUser.setUsername(update.getUsername());</span>
+        }
+
+<span class="fc" id="L295">        applicantService.saveApplicant(applicant);</span>
+<span class="fc" id="L296">        member.setApplicant(applicant);</span>
+<span class="fc" id="L297">        memberService.saveMember(member);</span>
+<span class="fc" id="L298">        memberUser.setMember(member);</span>
+<span class="fc" id="L299">        repository.save(memberUser);</span>
+<span class="fc" id="L300">    }</span>
+
+    @Transactional(rollbackOn = {
+            UserNotFoundException.class,
+            NotFoundException.class
+    })
+    public void updateCurrentUserProfile(Authentication authentication, UserProfileUpdate update) {
+<span class="nc" id="L307">        User user = repository.findByUsername(authentication.getName())</span>
+<span class="nc" id="L308">                .orElseThrow(UserNotFoundException::new);</span>
+<span class="nc" id="L309">        long id = user.getId();</span>
+<span class="nc" id="L310">        updateUserProfile(id, update);</span>
+<span class="nc" id="L311">    }</span>
+
+	@Transactional(rollbackOn = { UserNotFoundException.class, NotFoundException.class })
+	public void disableCurrentUserProfile(Authentication authentication, Boolean status) {
+<span class="nc" id="L315">		User user = repository.findByUsername(authentication.getName()).orElseThrow(UserNotFoundException::new);</span>
+<span class="nc" id="L316">		long id = user.getId();</span>
+<span class="nc" id="L317">		disableUserProfile(id, status);</span>
+
+<span class="nc" id="L319">	}</span>
+
+	@Transactional(rollbackOn = { NotFoundException.class, UserNotFoundException.class })
+	@PreAuthorize(&quot;permitAll()&quot;)
+	public void disableUserProfile(long userId, Boolean status) {
+<span class="nc" id="L324">		User user = repository.findById(userId).orElseThrow(UserNotFoundException::new);</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">		if (user.getUserRole() != UserRole.MEMBER)</span>
+<span class="nc" id="L326">			throw new NotFoundException(&quot;User does not have a profile.&quot;);</span>
+
+<span class="nc" id="L328">		MemberUser memberUser = (MemberUser) user;</span>
+<span class="nc" id="L329">		memberUser.setEnabled(false);</span>
+<span class="nc" id="L330">		repository.save(memberUser);</span>
+<span class="nc" id="L331">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

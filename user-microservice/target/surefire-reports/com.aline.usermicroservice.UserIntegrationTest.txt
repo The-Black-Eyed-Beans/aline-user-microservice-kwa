@@ -1,0 +1,12 @@
+-------------------------------------------------------------------------------
+Test set: com.aline.usermicroservice.UserIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 36, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 6.162 s <<< FAILURE! - in com.aline.usermicroservice.UserIntegrationTest
+test_confirmUserRegistration_enables_user_when_token_is_valid_and_user_exists  Time elapsed: 0.084 s  <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: not <null>
+	at com.aline.usermicroservice.UserIntegrationTest$UserRegistrationConfirmation.test_confirmUserRegistration_enables_user_when_token_is_valid_and_user_exists(UserIntegrationTest.java:346)
+
+test_registerUser_creates_a_userRegistrationToken  Time elapsed: 0.073 s  <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: not <null>
+	at com.aline.usermicroservice.UserIntegrationTest$UserRegistrationConfirmation.test_registerUser_creates_a_userRegistrationToken(UserIntegrationTest.java:334)
+

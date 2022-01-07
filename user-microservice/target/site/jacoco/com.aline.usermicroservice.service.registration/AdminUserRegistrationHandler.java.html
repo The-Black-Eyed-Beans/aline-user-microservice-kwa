@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdminUserRegistrationHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">User Microservice</a> &gt; <a href="index.source.html" class="el_package">com.aline.usermicroservice.service.registration</a> &gt; <span class="el_source">AdminUserRegistrationHandler.java</span></div><h1>AdminUserRegistrationHandler.java</h1><pre class="source lang-java linenums">package com.aline.usermicroservice.service.registration;
+
+import com.aline.core.dto.request.AdminUserRegistration;
+import com.aline.core.dto.response.UserResponse;
+import com.aline.core.exception.conflict.EmailConflictException;
+import com.aline.core.exception.conflict.UsernameConflictException;
+import com.aline.core.model.user.AdminUser;
+import com.aline.core.model.user.UserRole;
+import com.aline.core.repository.AdminUserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import javax.transaction.Transactional;
+
+/**
+ * Implementation of the UserRegistrationHandler interface.
+ * This class provides registration logic specifically for
+ * the AdminUser entity.
+ */
+@Component
+<span class="fc" id="L22">@RequiredArgsConstructor</span>
+public class AdminUserRegistrationHandler implements UserRegistrationHandler&lt;AdminUser, AdminUserRegistration&gt; {
+
+    private final PasswordEncoder passwordEncoder;
+    private final AdminUserRepository repository;
+
+    @Override
+    public Class&lt;AdminUserRegistration&gt; registersAs() {
+<span class="fc" id="L30">        return AdminUserRegistration.class;</span>
+    }
+
+    @Transactional(rollbackOn = {UsernameConflictException.class, EmailConflictException.class})
+    @Override
+    public AdminUser register(AdminUserRegistration registration) {
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">        if (repository.existsByUsername(registration.getUsername()))</span>
+<span class="nc" id="L37">            throw new UsernameConflictException();</span>
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">        if (repository.existsByEmail(registration.getEmail()))</span>
+<span class="nc" id="L39">            throw new EmailConflictException();</span>
+<span class="fc" id="L40">        String hashedPassword = passwordEncoder.encode(registration.getPassword());</span>
+<span class="fc" id="L41">        AdminUser user = AdminUser.builder()</span>
+<span class="fc" id="L42">                .firstName(registration.getFirstName())</span>
+<span class="fc" id="L43">                .lastName(registration.getLastName())</span>
+<span class="fc" id="L44">                .email(registration.getEmail())</span>
+<span class="fc" id="L45">                .username(registration.getUsername())</span>
+<span class="fc" id="L46">                .phone(registration.getPhone())</span>
+<span class="fc" id="L47">                .password(hashedPassword)</span>
+<span class="fc" id="L48">                .build();</span>
+<span class="fc" id="L49">        return repository.save(user);</span>
+    }
+
+    @Override
+    public UserResponse mapToResponse(AdminUser adminUser) {
+<span class="fc" id="L54">        return UserResponse.builder()</span>
+<span class="fc" id="L55">                .id(adminUser.getId())</span>
+<span class="fc" id="L56">                .firstName(adminUser.getFirstName())</span>
+<span class="fc" id="L57">                .lastName(adminUser.getLastName())</span>
+<span class="fc" id="L58">                .username(adminUser.getUsername())</span>
+<span class="fc" id="L59">                .email(adminUser.getEmail())</span>
+<span class="fc" id="L60">                .role(UserRole.valueOf(adminUser.getRole().toUpperCase()))</span>
+<span class="fc" id="L61">                .enabled(adminUser.isEnabled())</span>
+<span class="fc" id="L62">                .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

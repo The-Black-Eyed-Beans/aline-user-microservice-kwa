@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WebSecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">User Microservice</a> &gt; <a href="index.source.html" class="el_package">com.aline.usermicroservice.config</a> &gt; <span class="el_source">WebSecurityConfig.java</span></div><h1>WebSecurityConfig.java</h1><pre class="source lang-java linenums">package com.aline.usermicroservice.config;
+
+import com.aline.core.annotation.WebSecurityConfiguration;
+import com.aline.core.dto.response.UserProfile;
+import com.aline.core.dto.response.UserResponse;
+import com.aline.core.security.config.AbstractWebSecurityConfig;
+import com.aline.core.security.service.AbstractAuthorizationService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+@WebSecurityConfiguration
+<span class="fc" id="L14">@Slf4j(topic = &quot;Web Security Configuration&quot;)</span>
+<span class="fc" id="L15">public class WebSecurityConfig extends AbstractWebSecurityConfig {</span>
+
+    @Override
+    protected void configureHttp(HttpSecurity http) throws Exception {
+<span class="fc" id="L19">        http.authorizeRequests()</span>
+<span class="fc" id="L20">                .antMatchers(HttpMethod.POST,</span>
+                        &quot;/users/registration&quot;,
+                        &quot;/users/confirmation&quot;,
+                        &quot;/users/otp-authentication&quot;,
+                        &quot;/users/password-reset-otp&quot;)
+<span class="fc" id="L25">                .permitAll()</span>
+<span class="fc" id="L26">                .antMatchers(HttpMethod.PUT, &quot;/users/password-reset&quot;)</span>
+<span class="fc" id="L27">                .permitAll();</span>
+<span class="fc" id="L28">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

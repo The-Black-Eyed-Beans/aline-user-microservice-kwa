@@ -1,0 +1,15 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+User Microservice,com.aline.usermicroservice,UserMicroserviceApplication,5,3,0,0,2,1,1,1,1,1
+User Microservice,com.aline.usermicroservice.authorization,UserAuthorization,26,3,8,0,2,1,6,1,2,1
+User Microservice,com.aline.usermicroservice.service,MemberService,0,20,0,0,0,4,0,3,0,3
+User Microservice,com.aline.usermicroservice.service,UserConfirmationService,92,105,8,2,20,20,8,4,3,4
+User Microservice,com.aline.usermicroservice.service,ResetPasswordService,84,221,12,10,22,52,11,9,1,7
+User Microservice,com.aline.usermicroservice.service,AvatarService,54,6,0,0,12,1,2,1,2,1
+User Microservice,com.aline.usermicroservice.service,UserService,164,289,10,6,36,79,15,12,8,11
+User Microservice,com.aline.usermicroservice.service,ApplicantService,0,12,0,0,0,3,0,2,0,2
+User Microservice,com.aline.usermicroservice.controller,UserController,96,143,2,1,30,44,9,12,7,12
+User Microservice,com.aline.usermicroservice.controller,RootController,0,4,0,0,0,2,0,2,0,2
+User Microservice,com.aline.usermicroservice.config,BeanConfig,0,7,0,0,0,2,0,2,0,2
+User Microservice,com.aline.usermicroservice.config,WebSecurityConfig,0,43,0,0,0,8,0,3,0,3
+User Microservice,com.aline.usermicroservice.service.registration,AdminUserRegistrationHandler,8,83,2,2,2,23,2,4,0,4
+User Microservice,com.aline.usermicroservice.service.registration,MemberUserRegistrationHandler,4,104,1,5,1,24,1,6,0,4

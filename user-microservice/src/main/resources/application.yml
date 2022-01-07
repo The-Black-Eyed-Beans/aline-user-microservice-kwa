@@ -1,5 +1,5 @@
 server:
-  port: ${APP_PORT}
+  port: 8070
 
 spring:
   profiles:
