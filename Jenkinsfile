@@ -1,4 +1,3 @@
-//pipe
 pipeline {
     agent any
 
@@ -18,7 +17,7 @@ pipeline {
     stages {
         stage("Checkout") {
             steps {
-                git(branch:"${params.BRANCH_NAME}", url:"https://github.com/The-Black-Eyed-Beans/aline-user-microservice-kwa.git")
+                // git(branch:"${params.BRANCH_NAME}", url:"https://github.com/The-Black-Eyed-Beans/aline-user-microservice-kwa.git")
                 sh "git submodule init && git submodule update"
             }
         }
