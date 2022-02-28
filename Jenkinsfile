@@ -1,3 +1,4 @@
+//pipe
 pipeline {
     agent any
 
