@@ -28,9 +28,19 @@ pipeline {
             }
         }
 
-        stage("Testing") {
+        stage("Sonar Scan") {
             steps {
-                sh "echo testing"
+                withSonarQubeEnv(installationName: "SonarQube-Server") {
+                    sh "mvn sonar:sonar -Dsonar.projectName=kwa-${MICROSERVICE}"
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 3, unit: "MINUTES") {
+                    waitForQualityGate abortPipeline: true
+                }  
             }
         }
 
