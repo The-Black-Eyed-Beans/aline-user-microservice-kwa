@@ -32,7 +32,7 @@ pipeline {
         stage("Sonar Scan") {
             steps {
                 withSonarQubeEnv(installationName: "SonarQube-Server") {
-                    sh "mvn verify sonar:sonar -Dsonar.projectName=kwa-${MICROSERVICE}"
+                    sh "mvn verify sonar:sonar -Dmaven.test.failure.ignore=true"
                 }
             }
         }
