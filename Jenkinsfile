@@ -9,6 +9,7 @@ pipeline {
         REGION = "us-east-1"
         AWS_USER_ID = credentials("jenkins-aws-user-id")
         MICROSERVICE = "user_microservice"
+        COMMIT_HASH = "${sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()}"
     }
     parameters {
         string(name: "BRANCH_NAME", description: "The branch to checkout.")
@@ -31,7 +32,7 @@ pipeline {
         stage("Sonar Scan") {
             steps {
                 withSonarQubeEnv(installationName: "SonarQube-Server") {
-                    sh "mvn sonar:sonar -Dsonar.projectName=kwa-${MICROSERVICE}"
+                    sh "mvn verify sonar:sonar -Dsonar.projectName=kwa-${MICROSERVICE}"
                 }
             }
         }
@@ -53,18 +54,21 @@ pipeline {
         stage("Building Image") {
             steps {
                 sh "docker build -t kwa-${MICROSERVICE} ."
+
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'aws-key', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+    
+                    sh "aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${AWS_USER_ID}.dkr.ecr.${REGION}.amazonaws.com"
+                    sh "docker tag kwa-${MICROSERVICE}:latest ${AWS_USER_ID}.dkr.ecr.${REGION}.amazonaws.com/kwa-${MICROSERVICE}:${COMMIT_HASH}"
+                    sh "docker push ${AWS_USER_ID}.dkr.ecr.${REGION}.amazonaws.com/kwa-${MICROSERVICE}:${COMMIT_HASH}"
+                
+                }
             }
         }
 
         stage("Deploying") {
             steps {
-                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'aws-key', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-    
-                    sh "aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${AWS_USER_ID}.dkr.ecr.${REGION}.amazonaws.com"
-                    sh "docker tag kwa-${MICROSERVICE}:latest ${AWS_USER_ID}.dkr.ecr.${REGION}.amazonaws.com/kwa-${MICROSERVICE}:latest"
-                    sh "docker push ${AWS_USER_ID}.dkr.ecr.${REGION}.amazonaws.com/kwa-${MICROSERVICE}:latest"
-                
-                }
+                echo "Deploying ${MICROSERVICE}-kwa"
+                sh "aws cloudformation create-stack --stack-name user-kwa-stack --profile kevin --template-body file://ecs.yml"
             }
         }
     }
@@ -75,7 +79,7 @@ pipeline {
         }
 
         cleanup {
-            sh "docker rmi ${AWS_USER_ID}.dkr.ecr.${REGION}.amazonaws.com/kwa-${MICROSERVICE}:latest"
+            sh "docker rmi ${AWS_USER_ID}.dkr.ecr.${REGION}.amazonaws.com/kwa-${MICROSERVICE}:${COMMIT_HASH}"
         }
     }
 }
