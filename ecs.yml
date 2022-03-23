@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Deploying service to AWS via ECS
+
+Resources:
+  Task:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: aline-kwa
+      Cpu: 512
+      Memory: 2048
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: '{{resolve:secretsmanager:aline-kwa/dev/secrets/resource:SecretString:ExecutionRole}}'
+      TaskRoleArn: '{{resolve:secretsmanager:aline-kwa/dev/secrets/resource:SecretString:TaskRole}}'
+      ContainerDefinitions:
+        - Name: user
+          Image: 086620157175.dkr.ecr.us-east-1.amazonaws.com/kwa-user_microservice
+          PortMappings:
+            - ContainerPort: 8070
+          Environment:
+            - Name: DB_USERNAME
+              Value: '{{resolve:secretsmanager:kwaDB:SecretString:username}}'
+            - Name: DB_PASSWORD
+              Value: '{{resolve:secretsmanager:kwaDB:SecretString:password}}'
+            - Name: DB_HOST
+              Value: '{{resolve:secretsmanager:kwaDB:SecretString:host}}'
+            - Name: DB_PORT
+              Value: '{{resolve:secretsmanager:kwaDB:SecretString:port}}'
+            - Name: DB_NAME
+              Value: '{{resolve:secretsmanager:kwaDB:SecretString:dbname}}'
+            - Name: ENCRYPT_SECRET_KEY
+              Value: '{{resolve:secretsmanager:aline-kwa/dev/secrets/user-credentials:SecretString:EncryptKey}}'
+            - Name: JWT_SECRET_KEY
+              Value: '{{resolve:secretsmanager:aline-kwa/dev/secrets/user-credentials:SecretString:JWTKey}}'
+
+
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      TaskDefinition: !Ref Task
+      Cluster: kwa-aline-ecs
+      LaunchType: FARGATE
+      DesiredCount: 1
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 70
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - '{{resolve:secretsmanager:aline-kwa/dev/secrets/resource:SecretString:Public1}}'
+            - '{{resolve:secretsmanager:aline-kwa/dev/secrets/resource:SecretString:Public2}}'
+          SecurityGroups:
+            - '{{resolve:secretsmanager:aline-kwa/dev/secrets/resource:SecretString:Sghttp}}'
+      LoadBalancers:
+        - ContainerName: user
+          ContainerPort: 8070
+          TargetGroupArn: !Ref TargetGroup
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: '{{resolve:secretsmanager:aline-kwa/dev/secrets/resource:SecretString:VpcId}}'
+      Port: 8070
+      TargetType: ip
+      Protocol: HTTP
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 60
+      HealthCheckPort: 8070
+      HealthCheckTimeoutSeconds: 5
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: '{{resolve:secretsmanager:aline-kwa/dev/secrets/resource:SecretString:LoadBalancerArn}}'
+      Port: 8070
+      Protocol: HTTP
